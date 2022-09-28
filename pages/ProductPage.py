@@ -1,3 +1,5 @@
+import allure
+
 from pages.BasePage import BasePage
 from selenium.webdriver.common.by import By
 
@@ -13,12 +15,15 @@ class ProductPage(BasePage):
     PRODUCT = (By.CSS_SELECTOR, ".row .product-layout")
     COUNT_TEXT = (By.CSS_SELECTOR, ".text-right")
 
+    @allure.step
     def go_home_page(self):
         self.element(self.BUTTON_HOME).click()
 
+    @allure.step
     def navigation_in_catalog(self, category_prod):
         self.element(category_prod).click()
 
+    @allure.step
     def change_prod_view(self, view):
         if view == "list":
             self.element(self.BUTTON_LIST).click()
@@ -27,10 +32,12 @@ class ProductPage(BasePage):
         else:
             return "viwe - list or grid"
 
+    @allure.step
     def verify_prod_view(self):
         for el in self.elements(self.PRODUCT):
             yield el.get_attribute("class")
 
+    @allure.step
     def verify_count_prod_on_page(self):
         prod_count = len(self.elements(self.PRODUCT))
         count_in_page = int(self.element(self.COUNT_TEXT).text.split()[5])

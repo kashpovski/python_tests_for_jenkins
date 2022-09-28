@@ -1,5 +1,6 @@
 import time
 import random
+import allure
 
 from pages.BasePage import BasePage
 from selenium.webdriver.common.by import By
@@ -15,11 +16,13 @@ class CardPade(BasePage):
     RATING = (By.CSS_SELECTOR, "[name='rating']")
     BUTTON_CONTINUE = (By.CSS_SELECTOR, "button#button-review")
 
+    @allure.step
     def add_to_card(self, value):
         self._input(self.element(self.QUANTITY), value)
         self.element(self.BUTTON_ADDTOCART).click()
         time.sleep(1)
 
+    @allure.step
     def create_review(self, username, review_text):
         self.element(self.REVIEWS).click()
         self._input(self.element(self.REVIEW_NAME), username)
@@ -27,5 +30,6 @@ class CardPade(BasePage):
         self.elements(self.RATING)[random.randint(0, 4)].click()
         self.element(self.BUTTON_CONTINUE).click()
 
+    @allure.step
     def verify_count_prod_in_card(self):
         return self.element(self.CART_TOTAL).text.split()[0]

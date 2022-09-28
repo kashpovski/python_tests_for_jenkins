@@ -1,14 +1,18 @@
+import allure
 import pytest
 
 from pages.ProductPage import ProductPage
 
 
+@allure.feature("Navigation")
 def test_back_home(browser):
     ProductPage(browser).open()
     ProductPage(browser).go_home_page()
     assert ProductPage(browser).get_title() == "Your Store"
 
 
+@allure.feature("Page title")
+@allure.title("Check title in catalog page")
 @pytest.mark.parametrize("locator, url_title", [(ProductPage.BUTTON_LAPTOPS, "Laptops & Notebooks"),
                                                 (ProductPage.BUTTON_CAMERAS, "Cameras"),
                                                 (ProductPage.BUTTON_MP3, "MP3 Players")],
@@ -19,6 +23,7 @@ def test_title(browser, locator, url_title):
     assert ProductPage(browser).get_title() == url_title
 
 
+@allure.feature("Navigation")
 @pytest.mark.parametrize("view, class_name", [("list",
                                                "product-layout product-list col-xs-12"),
                                               ("grid",
@@ -31,6 +36,7 @@ def test_view(browser, view, class_name):
         assert el == class_name
 
 
+@allure.feature("Navigation")
 @pytest.mark.parametrize("locator", [ProductPage.BUTTON_LAPTOPS, ProductPage.BUTTON_CAMERAS, ProductPage.BUTTON_MP3],
                          ids=["Laptops & Notebooks", "Cameras", "MP3 Players"])
 def test_per_product_on_page(browser, locator):

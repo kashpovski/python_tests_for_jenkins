@@ -11,12 +11,12 @@ from browsermobproxy import Server, Client
 def pytest_addoption(parser):
     parser.addoption("--browser", default="chrome", help="Browser to run tests")
     parser.addoption("--headless", action="store_true", help="Browser in headless mode")
-    parser.addoption("--driver", default="D:\Mars\QA\WebDrivers", help="Directory to the webdriver")
-    parser.addoption("--url", action="store_true", default="http://172.20.43.209:8081/", help="Base url")
+    parser.addoption("--driver", default=r"D:\Mars\QA\tools\WebDrivers", help="Directory to the webdriver")
+    parser.addoption("--url", action="store_true", default="http://172.20.46.189:8081/", help="Base url")
     parser.addoption("--fullscreen", action="store_true", help="Open browser in full-screen mode")
     parser.addoption("--log_level", default="DEBUG", help="Set log level")
-    parser.addoption("--log_proxy", default=False, help="Open browser in log proxy")
-    parser.addoption("--log_browser", default=True, help="Open browser in log browser")
+    parser.addoption("--log_proxy", action="store_true", help="Open browser in log proxy")
+    parser.addoption("--log_browser", action="store_true", help="Open browser in log browser")
 
 
 @pytest.fixture

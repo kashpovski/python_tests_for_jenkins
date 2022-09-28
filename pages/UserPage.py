@@ -1,3 +1,5 @@
+import allure
+
 from pages.BasePage import BasePage
 from selenium.webdriver.common.by import By
 
@@ -17,6 +19,7 @@ class UserPage(BasePage):
     PRIVACY_POLICY = (By.CSS_SELECTOR, "div.modal-content")
     ACCOUNT_CREATED = (By.CSS_SELECTOR, "div#content>h1")
 
+    @allure.step
     def registration(self, username="", email="", phone_number="", password=""):
         self._input(self.element(self.FIRSTNAME), username)
         self._input(self.element(self.LASTNAME), username)
@@ -28,13 +31,16 @@ class UserPage(BasePage):
         self.element(self.BUTTON_CONTINUE).click()
         return self
 
+    @allure.step
     def verify_privacy_policy(self):
         self.element(self.BUTTON_PRIVACY_POLICY).click()
         return self.element(self.PRIVACY_POLICY)
 
+    @allure.step
     def verify_text_danger(self, locator):
         self.element(self.BUTTON_CONTINUE).click()
         return self.element((locator[0], locator[1] + self.TEXT_DANGER)).text
 
+    @allure.step
     def verify_registration(self):
         return self.element(self.ACCOUNT_CREATED).text
