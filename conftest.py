@@ -9,10 +9,15 @@ from browsermobproxy import Server, Client
 
 
 def pytest_addoption(parser):
-    parser.addoption("--browser", default="chrome", help="Browser to run tests")
+    parser.addoption("--browser",
+                     default="chrome",
+                     choices=["chrome", "firefox", "MicrosoftEdge", "opera", "yandex"],
+                     help="Browser to run tests")
+    parser.addoption("--remote", action="store_true", help="Open browser in remote")
     parser.addoption("--headless", action="store_true", help="Browser in headless mode")
     parser.addoption("--driver", default=r"D:\Mars\QA\tools\WebDrivers", help="Directory to the webdriver")
-    parser.addoption("--url", action="store_true", default="http://172.20.46.189:8081/", help="Base url")
+    parser.addoption("--url", default="http://192.168.31.185:8081/", help="Base url")
+    parser.addoption("--executor", default="192.168.147.130", help="Remote ip address")
     parser.addoption("--fullscreen", action="store_true", help="Open browser in full-screen mode")
     parser.addoption("--log_level", default="DEBUG", help="Set log level")
     parser.addoption("--log_proxy", action="store_true", help="Open browser in log proxy")
@@ -31,7 +36,7 @@ def proxy_server(request):
         server.create_proxy()
         request.addfinalizer(client.close)
         request.addfinalizer(server.stop)
-        client.new_har() #Архив сетевой активнти браузера (список словарей)
+        client.new_har()  # Архив сетевой активнти браузера (список словарей)
         return client
     else:
         pass
@@ -47,10 +52,13 @@ def browser(request, proxy_server):
     log_level = request.config.getoption("--log_level")
     log_proxy = request.config.getoption("--log_proxy")
     log_browser = request.config.getoption("--log_browser")
+    remote = request.config.getoption("--remote")
+    executor = request.config.getoption("--executor")
 
     logger = logging.getLogger(request.node.name)
-    file_handler = logging.FileHandler(f"logs/logs_tests/{request.function.__name__}.log")
-    file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s %(funcName)s [%(module)s] | %(levelname)s :  %(message)s"))
+    file_handler = logging.FileHandler(f"logs/logs_tests/{request.module.__name__}-{request.function.__name__}.log")
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(name)s %(funcName)s [%(module)s] | %(levelname)s :  %(message)s"))
     logger.addHandler(file_handler)
     logger.setLevel(level=log_level)
 
@@ -61,16 +69,24 @@ def browser(request, proxy_server):
     options = webdriver.ChromeOptions()
     if headless:
         options.headless = True
+        logger.info("headless mode")
     if log_proxy:
         options.accept_insecure_certs = True
         proxy_server.add_to_webdriver_capabilities(caps)
+        logger.info("log proxy on")
     if log_browser:
         caps['goog:loggingPrefs'] = {
             'browser': 'ALL',
             'performance': 'ALL',
         }
+        logger.info("log browser on")
 
-    if browser_name == "chrome":
+    if remote:
+        _browser = webdriver.Remote(command_executor=f"{executor}:4444/wd/hub",
+                                    desired_capabilities={"browserName": browser_name},
+                                    options=options)
+        logger.info(f"remote mode (Selenium server: {executor})")
+    elif browser_name == "chrome":
         _browser = webdriver.Chrome(executable_path=driver + "\chromedriver",
                                     options=options,
                                     desired_capabilities=caps)
@@ -81,13 +97,14 @@ def browser(request, proxy_server):
     elif browser_name == "yandex":
         _browser = webdriver.Chrome(executable_path=driver + "\yandexdriver",
                                     options=options)
-    elif browser_name == "edge":
+    elif browser_name == "MicrosoftEdge":
         _browser = webdriver.Edge(executable_path=driver + "\msedgedriver")
     else:
         raise ValueError(f"Browser '{browser_name}' is not supported ")
 
     if fullscreen:
         _browser.maximize_window()
+        logger.info("fullscreen mode")
 
     _browser.url = url
     _browser.test_file = request.function.__name__
@@ -130,8 +147,10 @@ def browser(request, proxy_server):
             pass
 
     def fin():
-        logs_browser(f"logs/logs_browser/{request.function.__name__}", log_browser)
-        dump_log_proxy_to_json(f"logs/logs_proxy/{request.function.__name__}_proxy.json", log_proxy)
+        logs_browser(f"logs/logs_browser/{request.module.__name__}-{request.function.__name__}",
+                     log_browser)
+        dump_log_proxy_to_json(f"logs/logs_proxy/{request.module.__name__}-{request.function.__name__}_proxy.json",
+                               log_proxy)
         # _browser.proxy.close()
         _browser.quit()
         logger.info(f"<=== Test finished. {datetime.datetime.now() - start_time} <===")

@@ -20,7 +20,7 @@ class CardPade(BasePage):
     def add_to_card(self, value):
         self._input(self.element(self.QUANTITY), value)
         self.element(self.BUTTON_ADDTOCART).click()
-        time.sleep(2)
+        time.sleep(3)
 
     @allure.step
     def create_review(self, username, review_text):
