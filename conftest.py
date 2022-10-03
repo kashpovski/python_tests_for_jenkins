@@ -17,11 +17,15 @@ def pytest_addoption(parser):
     parser.addoption("--headless", action="store_true", help="Browser in headless mode")
     parser.addoption("--driver", default=r"D:\Mars\QA\tools\WebDrivers", help="Directory to the webdriver")
     parser.addoption("--url", default="http://192.168.31.185:8081/", help="Base url")
-    parser.addoption("--executor", default="192.168.147.130", help="Remote ip address")
+    parser.addoption("--executor", default="192.168.147.1", help="Remote ip address")
     parser.addoption("--fullscreen", action="store_true", help="Open browser in full-screen mode")
     parser.addoption("--log_level", default="DEBUG", help="Set log level")
     parser.addoption("--log_proxy", action="store_true", help="Open browser in log proxy")
     parser.addoption("--log_browser", action="store_true", help="Open browser in log browser")
+    parser.addoption("--platform_name",
+                     default="Windows 10",
+                     choices=["Windows XP", "Windows 10"],
+                     help="Platform name for remote ran")
 
 
 @pytest.fixture
@@ -54,6 +58,7 @@ def browser(request, proxy_server):
     log_browser = request.config.getoption("--log_browser")
     remote = request.config.getoption("--remote")
     executor = request.config.getoption("--executor")
+    platform_name = request.config.getoption("--platform_name")
 
     logger = logging.getLogger(request.node.name)
     file_handler = logging.FileHandler(f"logs/logs_tests/{request.module.__name__}-{request.function.__name__}.log")
@@ -83,9 +88,11 @@ def browser(request, proxy_server):
 
     if remote:
         _browser = webdriver.Remote(command_executor=f"{executor}:4444/wd/hub",
-                                    desired_capabilities={"browserName": browser_name},
+                                    desired_capabilities={"browserName": browser_name,
+                                                          "platformName": platform_name
+                                                          },
                                     options=options)
-        logger.info(f"remote mode (Selenium server: {executor})")
+        logger.info(f"remote mode (Selenium server: {executor}, Platform name: {platform_name})")
     elif browser_name == "chrome":
         _browser = webdriver.Chrome(executable_path=driver + "\chromedriver",
                                     options=options,
