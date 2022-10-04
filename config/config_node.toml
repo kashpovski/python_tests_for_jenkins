@@ -1,0 +1,3 @@
+[node]
+max-sessions=3
+hub="http://192.168.147.1:4444"
