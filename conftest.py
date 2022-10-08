@@ -2,10 +2,14 @@ import pytest
 import logging
 import datetime
 import json
+import allure
 
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from browsermobproxy import Server, Client
+
+from _pytest.nodes import Item
+from _pytest.runner import CallInfo
 
 
 def pytest_addoption(parser):
@@ -32,7 +36,7 @@ def pytest_addoption(parser):
     parser.addoption("--remote_log", action="store_true", help="Selenoid: switch log")
     parser.addoption("--remote_name", help="Selenoid: name user")
     parser.addoption("--remote_sr", help="Selenoid: change screen resolution (ex. 1280x1024)")
-
+    parser.addoption("--remote_mobile", help="Selenoid: mobile mod only Chrome browser (ex. 'iPhone 5/SE')")
 
 
 @pytest.fixture
@@ -72,63 +76,75 @@ def browser(request, proxy_server):
     remote_log = request.config.getoption("--remote_log")
     remote_name = request.config.getoption("--remote_name")
     remote_sr = request.config.getoption("--remote_sr")
-
+    remote_mobile = request.config.getoption("--remote_mobile")
 
     logger = logging.getLogger(request.node.name)
-    file_handler = logging.FileHandler(f"logs/logs_tests/{request.module.__name__}-{request.function.__name__}.log")
+    file_handler = logging.FileHandler(
+        f"logs/logs_tests/{request.module.__name__}-{request.function.__name__}.log")  # request.node.name
     file_handler.setFormatter(
         logging.Formatter("%(asctime)s - %(name)s %(funcName)s [%(module)s] | %(levelname)s :  %(message)s"))
     logger.addHandler(file_handler)
-    logger.setLevel(level=log_level)
 
     start_time = datetime.datetime.now()
     logger.info("======== Test started ========")
 
-    caps = DesiredCapabilities.CHROME
-    options = webdriver.ChromeOptions()
+    if browser_name == "chrome":
+        _driver = webdriver.Chrome
+        executable_path = driver_path + "\chromedriver"
+        options = webdriver.ChromeOptions()
+        capabilities = DesiredCapabilities.CHROME
+    elif browser_name == "MicrosoftEdge":
+        _driver = webdriver.Chrome
+        executable_path = driver_path + "\msedgedriver"
+        options = webdriver.EdgeOptions()
+        capabilities = DesiredCapabilities.EDGE
+    elif browser_name == "firefox":
+        _driver = webdriver.Firefox
+        executable_path = driver_path + "\geckodriver"
+        options = webdriver.FirefoxOptions()
+        capabilities = DesiredCapabilities.FIREFOX
+    elif browser_name == "yandex":
+        _driver = webdriver.Chrome
+        executable_path = driver_path + "\yandexdriver"
+        options = webdriver.ChromeOptions()
+        capabilities = DesiredCapabilities.CHROME
+    elif browser_name == "opera":
+        _driver = webdriver.Chrome
+        executable_path = driver_path + "\operadriver"
+        options = None
+        capabilities = {"browserName": browser_name}
+    else:
+        raise ValueError(f"Browser '{browser_name}' is not supported")
 
     if headless:
         options.headless = True
         logger.info("headless mode")
     if log_proxy:
         options.accept_insecure_certs = True
-        proxy_server.add_to_webdriver_capabilities(caps)
+        proxy_server.add_to_webdriver_capabilities(capabilities)
         logger.info("log proxy on")
     if log_browser:
-        caps['goog:loggingPrefs'] = {
+        capabilities['goog:loggingPrefs'] = {
             'browser': 'ALL',
             'performance': 'ALL',
         }
         logger.info("log browser on")
 
     if remote == "local":
-        if browser_name == "chrome":
-            _browser = webdriver.Chrome(executable_path=driver_path + "\chromedriver",
-                                        options=options,
-                                        desired_capabilities=caps)
-        elif browser_name == "firefox":
-            _browser = webdriver.Firefox(executable_path=driver_path + "\geckodriver")
-        elif browser_name == "opera":
-            _browser = webdriver.Opera(executable_path=driver_path + "\operadriver")
-        elif browser_name == "yandex":
-            _browser = webdriver.Chrome(executable_path=driver_path + "\yandexdriver",
-                                        options=options)
-        elif browser_name == "MicrosoftEdge":
-            _browser = webdriver.Edge(executable_path=driver_path + "\msedgedriver")
-        else:
-            raise ValueError(f"Browser '{browser_name}' is not supported ")
+        _browser = _driver(executable_path=executable_path,
+                           options=options,
+                           desired_capabilities=capabilities)
+        logger.info("local started")
+
     else:
-        capabilities = {}
         if remote == "selenium":
-            capabilities = {
-                "browserName": browser_name,
-                "platformName": remote_platform_name
-            }
+            capabilities.update({"platformName": remote_platform_name})
             logger.info(f"remote mode (Selenium server: {remote_executor}, Platform name: {remote_platform_name})")
         elif remote == "selenoid":
-            capabilities = {
-                "browserName": browser_name,
+            capabilities.update({
                 "browserVersion": remote_bv,
+                "acceptSslCerts": True,
+                "acceptInsecureCerts": True,
                 "selenoid:options": {
                     "screenResolution": remote_sr,
                     "name": remote_name,
@@ -136,12 +152,11 @@ def browser(request, proxy_server):
                     "enableVideo": remote_video,
                     "enableLog": remote_log,
                 },
-                "acceptSslCerts": True,
-                "acceptInsecureCerts": True,
                 # "timeZone": 'Europe/Moscow',
-                # "goog:chromeOptions": {"mobileEmulation": {"deviceName": "iPhone 5/SE"}}
-            }
-            logger.info(f"remote mode (Selenoid {remote_executor})")
+            })
+            if remote_mobile:
+                capabilities.update({"goog:chromeOptions": {"mobileEmulation": {"deviceName": remote_mobile}}})
+            logger.info(f"remote mode (Selenoid: {remote_executor})")
         _browser = webdriver.Remote(command_executor=f"{remote_executor}:4444/wd/hub",
                                     desired_capabilities=capabilities,
                                     options=options)
@@ -197,8 +212,20 @@ def browser(request, proxy_server):
                                log_proxy)
         # _browser.proxy.close()
         _browser.quit()
-        logger.info(f"^^^^^^^^ Test finished. {datetime.datetime.now() - start_time} ^^^")
+        logger.info(f"^^^^^^^^ Test finished. {datetime.datetime.now() - start_time} ^^^^^^^^")
 
     request.addfinalizer(fin)
 
     return _browser
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item):
+    outcome = yield
+    result = outcome.get_result()
+    if result.when == "call" and result.failed:
+        if "browser" in item.fixturenames:
+            allure.attach(item.funcargs["browser"].get_screenshot_as_png(),
+                          name="Test FAILED (screenshot error)",
+                          attachment_type=allure.attachment_type.PNG)
+            item.funcargs["browser"].logger.warning("Test FAILED (make screenshot error)")

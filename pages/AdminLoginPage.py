@@ -17,7 +17,7 @@ class AdminLoginPage(BasePage):
     def login(self, username="", password=""):
         self._input(self.element(self.USERNAME), username)
         self._input(self.element(self.PASSWORD), password)
-        self.browser.find_element(*self.BUTTON_LOGIN).click()
+        self.element(self.BUTTON_LOGIN).click()
         return self
 
     @allure.step
