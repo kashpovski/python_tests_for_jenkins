@@ -8,9 +8,6 @@ from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from browsermobproxy import Server, Client
 
-from _pytest.nodes import Item
-from _pytest.runner import CallInfo
-
 
 def pytest_addoption(parser):
     parser.addoption("--browser",
@@ -44,7 +41,7 @@ def proxy_server(request):
     log_proxy = request.config.getoption("--log_proxy")
 
     if log_proxy:
-        server = Server(r"D:\Mars\QA\OTUS\lesson_18\Homework_18_allure\browsermob-proxy-2.1.4\bin\browsermob-proxy.bat",
+        server = Server(r"D:\Mars\QA\OTUS\lesson_28\python_docker_tests\browsermob-proxy-2.1.4\bin\browsermob-proxy.bat",
                         {"port": 8082})
         server.start({"log_path": "logs/logs_proxy"})
         client = Client("localhost:8082")

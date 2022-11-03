@@ -1,0 +1,8 @@
+.idea/
+browsermob-proxy-2.1.4/
+allure*/
+.git
+.pytest_cache/
+**/venv/
+Dockerfile*
+*/__pycache__/
