@@ -3,11 +3,16 @@ import logging
 import datetime
 import json
 import allure
+import os
 
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from browsermobproxy import Server, Client
 
+
+PATH_LOGS_TEST = "logs/logs_tests/"
+PATH_LOGS_BROWSER = "logs/logs_browser/"
+PATH_LOGS_PROXY = "logs/logs_proxy/"
 
 def pytest_addoption(parser):
     parser.addoption("--browser",
@@ -41,9 +46,9 @@ def proxy_server(request):
     log_proxy = request.config.getoption("--log_proxy")
 
     if log_proxy:
-        server = Server(r"D:\Mars\QA\OTUS\lesson_28\python_docker_tests\browsermob-proxy-2.1.4\bin\browsermob-proxy.bat",
+        server = Server(rf"{os.getcwd()}\browsermob-proxy-2.1.4\bin\browsermob-proxy.bat",
                         {"port": 8082})
-        server.start({"log_path": "logs/logs_proxy"})
+        server.start({"log_path": PATH_LOGS_PROXY})
         client = Client("localhost:8082")
         server.create_proxy()
         request.addfinalizer(client.close)
@@ -76,8 +81,7 @@ def browser(request, proxy_server):
     remote_mobile = request.config.getoption("--remote_mobile")
 
     logger = logging.getLogger(request.node.name)
-    file_handler = logging.FileHandler(
-        f"logs/logs_tests/{request.module.__name__}-{request.function.__name__}.log")  # request.node.name
+    file_handler = logging.FileHandler(f"{PATH_LOGS_TEST}{request.module.__name__}-{request.function.__name__}.log")
     file_handler.setFormatter(
         logging.Formatter("%(asctime)s - %(name)s %(funcName)s [%(module)s] | %(levelname)s :  %(message)s"))
     logger.addHandler(file_handler)
@@ -203,9 +207,9 @@ def browser(request, proxy_server):
             pass
 
     def fin():
-        logs_browser(f"logs/logs_browser/{request.module.__name__}-{request.function.__name__}",
+        logs_browser(f"{PATH_LOGS_BROWSER}{request.module.__name__}-{request.function.__name__}",
                      log_browser)
-        dump_log_proxy_to_json(f"logs/logs_proxy/{request.module.__name__}-{request.function.__name__}_proxy.json",
+        dump_log_proxy_to_json(f"{PATH_LOGS_PROXY}{request.module.__name__}-{request.function.__name__}_proxy.json",
                                log_proxy)
         # _browser.proxy.close()
         _browser.quit()
@@ -214,6 +218,16 @@ def browser(request, proxy_server):
     request.addfinalizer(fin)
 
     return _browser
+
+
+@pytest.hookimpl()
+def pytest_sessionstart():
+    try:
+        os.makedirs(PATH_LOGS_TEST)
+        os.makedirs(PATH_LOGS_BROWSER)
+        os.makedirs(PATH_LOGS_PROXY)
+    except FileExistsError:
+        pass
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
